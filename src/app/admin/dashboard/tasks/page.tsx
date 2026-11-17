@@ -233,7 +233,7 @@ export default function AdminTasksPage() {
                   <MapPin className="w-3.5 h-3.5 text-emerald-600" /> {task.location}
                 </span>
                 <span>Assigned: <strong className="text-slate-700">{task.assigned_to}</strong></span>
-                <span>• {new Date(task.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                <span>• {new Date(task.created_at || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
               </div>
             </div>
 

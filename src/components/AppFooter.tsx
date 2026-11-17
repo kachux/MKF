@@ -6,8 +6,21 @@ import { usePathname } from "next/navigation";
 export default function AppFooter() {
   const pathname = usePathname();
 
-  // Hide on Figma landing, auth flow, and help desk / AI pages
-  const figmaPages = ["/", "/login", "/admin/login", "/volunteer/login", "/delegate", "/help-desk", "/mkf-ai"];
+  // Hide on Figma landing, schedule, lost-found, auth flow, and help desk / AI pages
+  const figmaPages = [
+    "/",
+    "/schedule",
+    "/lost-found",
+    "/lost-found/report",
+    "/help-desk",
+    "/admin/dashboard",
+    "/volunteer/dashboard",
+    "/login",
+    "/admin/login",
+    "/volunteer/login",
+    "/delegate",
+    "/mkf-ai",
+  ];
   if (figmaPages.includes(pathname)) {
     return null;
   }

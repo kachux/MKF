@@ -52,11 +52,22 @@ export interface FoodPrayerItem {
 
 export type LostFoundStatus = 'reported' | 'found' | 'returned';
 
+export type LostFoundCategory =
+  | 'Electronics'
+  | 'Wallet & ID'
+  | 'Wallets & IDs'
+  | 'Bag & Accessories'
+  | 'Bags & Books'
+  | 'Glasses & Accessories'
+  | 'Clothing'
+  | 'Keys'
+  | 'Other';
+
 export interface LostFoundItem {
   id: string;
   item_name: string;
   description: string;
-  category: 'Electronics' | 'Wallet & ID' | 'Bag & Accessories' | 'Clothing' | 'Keys' | 'Other';
+  category: LostFoundCategory;
   location: string;
   image_url?: string;
   status: LostFoundStatus;
@@ -68,13 +79,25 @@ export interface LostFoundItem {
 
 export type HelpRequestStatus = 'open' | 'assigned' | 'in_progress' | 'resolved';
 
+export type HelpCategory =
+  | 'General enquiry'
+  | 'Accommodation'
+  | 'Food'
+  | 'Medical assistance'
+  | 'Venue information'
+  | 'Technical issue'
+  | 'Delegate badge'
+  | 'Volunteer Coordinator Dispatch'
+  | 'Other';
+
 export interface HelpRequest {
   id: string;
   name: string;
-  category: 'General enquiry' | 'Accommodation' | 'Food' | 'Medical assistance' | 'Venue information' | 'Technical issue' | 'Other';
+  category: HelpCategory;
   description: string;
   location: string;
   contact?: string;
+  phone?: string;
   status: HelpRequestStatus;
   assigned_to?: string;
   created_at: string;
@@ -85,13 +108,16 @@ export type TaskStatus = 'pending' | 'accepted' | 'completed';
 export interface VolunteerTask {
   id: string;
   title: string;
-  instructions: string;
-  location: string;
+  instructions?: string;
+  description?: string;
+  location?: string;
+  venue?: string;
+  due_time?: string;
   priority: PriorityLevel;
   status: TaskStatus;
   assigned_to: string; // 'all' or volunteer name or specific volunteer ID
   team?: string;
-  created_at: string;
+  created_at?: string;
   accepted_at?: string;
   completed_at?: string;
 }

@@ -11,8 +11,21 @@ export default function EmergencyBanner() {
   const { announcements } = useEventData();
   const [dismissedId, setDismissedId] = useState<string | null>(null);
 
-  // Hide on Figma landing, auth, and help desk / AI screens
-  const figmaPages = ["/", "/login", "/admin/login", "/volunteer/login", "/delegate", "/help-desk", "/mkf-ai"];
+  // Hide on Figma landing, schedule, lost-found, auth, and help desk / AI screens
+  const figmaPages = [
+    "/",
+    "/schedule",
+    "/lost-found",
+    "/lost-found/report",
+    "/help-desk",
+    "/admin/dashboard",
+    "/volunteer/dashboard",
+    "/login",
+    "/admin/login",
+    "/volunteer/login",
+    "/delegate",
+    "/mkf-ai",
+  ];
   if (figmaPages.includes(pathname)) {
     return null;
   }

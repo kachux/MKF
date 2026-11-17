@@ -37,13 +37,18 @@ export default function AdminDashboardLayout({
 
   if (isLoading || !isAdmin) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <div className="w-8 h-8 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
           <p className="text-xs text-slate-500 font-medium">Verifying administrator authorization...</p>
         </div>
       </div>
     );
+  }
+
+  // Exact Figma node 2007-44 for /admin/dashboard: render directly
+  if (pathname === "/admin/dashboard") {
+    return <>{children}</>;
   }
 
   const adminNav = [
@@ -64,14 +69,14 @@ export default function AdminDashboardLayout({
       <aside className="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 border-r border-slate-800">
         <div className="p-5 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-black">
+            <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center font-black">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
               <div className="font-bold text-sm tracking-tight text-white leading-none">
                 Admin Console
               </div>
-              <div className="text-[10px] text-amber-400 font-semibold uppercase mt-0.5">
+              <div className="text-[10px] text-rose-400 font-semibold uppercase mt-0.5">
                 Full Controller
               </div>
             </div>
@@ -91,7 +96,7 @@ export default function AdminDashboardLayout({
                 href={item.href}
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
                   isActive
-                    ? "bg-amber-500 text-slate-950 shadow"
+                    ? "bg-rose-600 text-white shadow"
                     : "text-slate-300 hover:text-white hover:bg-slate-800"
                 }`}
               >
