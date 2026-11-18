@@ -90,7 +90,7 @@ export default function AdminHelpDeskPage() {
                   onClick={() => handleConvertToTask(req)}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm"
                 >
-                  <span>Dispatch to Volunteers</span>
+                  <span>Assign to Volunteer</span>
                   <ArrowRight className="w-3 h-3" />
                 </button>
               )}
@@ -107,7 +107,7 @@ export default function AdminHelpDeskPage() {
                 }`}
               >
                 <option value="open">Open / Pending</option>
-                <option value="in_progress">Volunteer Dispatched</option>
+                <option value="in_progress">In Progress</option>
                 <option value="resolved">Resolved</option>
               </select>
 

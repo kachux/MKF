@@ -25,22 +25,22 @@ export default function AdminDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAdmin, isLoading, logout } = useAuth();
+  const { isAdmin, isVolunteer, isLoading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && !isAdmin) {
+    if (!isLoading && !isAdmin && !isVolunteer) {
       router.push("/admin/login");
     }
-  }, [isLoading, isAdmin, router]);
+  }, [isLoading, isAdmin, isVolunteer, router]);
 
-  if (isLoading || !isAdmin) {
+  if (isLoading || (!isAdmin && !isVolunteer)) {
     return (
       <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-          <p className="text-xs text-slate-500 font-medium">Verifying administrator authorization...</p>
+          <p className="text-xs text-slate-500 font-medium">Verifying authorization...</p>
         </div>
       </div>
     );

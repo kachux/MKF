@@ -19,12 +19,7 @@ import {
   ExternalLink,
   CheckCircle2,
   LogOut,
-  Radio,
-  Phone,
-  MapPin,
-  AlertTriangle,
-  CheckCircle,
-  Loader2
+  Radio
 } from "lucide-react";
 
 interface Message {
@@ -40,9 +35,7 @@ export default function MKFHelpDesk() {
   const searchParams = useSearchParams();
   const initialMode = searchParams.get("mode") === "voice" ? "voice" : "chat";
 
-  const [activeTab, setActiveTab] = useState<"chat" | "voice" | "ticket">(
-    initialMode === "voice" ? "voice" : searchParams.get("mode") === "ticket" ? "ticket" : "chat"
-  );
+  const [activeTab, setActiveTab] = useState<"chat" | "voice">(initialMode);
   const [speechLang, setSpeechLang] = useState<string>("en-IN");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -55,14 +48,6 @@ export default function MKFHelpDesk() {
   ]);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // Ticket Submission State
-  const [ticketCategory, setTicketCategory] = useState("General enquiry");
-  const [ticketLocation, setTicketLocation] = useState("");
-  const [ticketPhone, setTicketPhone] = useState("");
-  const [ticketDescription, setTicketDescription] = useState("");
-  const [ticketSubmitting, setTicketSubmitting] = useState(false);
-  const [ticketSuccess, setTicketSuccess] = useState<string | null>(null);
 
   // Voice Interaction State
   const [isListening, setIsListening] = useState(false);
@@ -259,43 +244,6 @@ export default function MKFHelpDesk() {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Submit Ticket / Volunteer Dispatch Logic
-  const handleTicketSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ticketDescription.trim()) return;
-    setTicketSubmitting(true);
-    setTicketSuccess(null);
-    try {
-      const res = await fetch("/api/help-desk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: delegateName,
-          category: ticketCategory,
-          description: ticketDescription.trim(),
-          location: ticketLocation.trim() || "Main Campus",
-          contact: ticketPhone.trim() || delegateEmail,
-          phone: ticketPhone.trim(),
-          status: "open"
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setTicketSuccess(
-          `Ticket dispatched successfully! An on-duty volunteer has been alerted to report to ${ticketLocation.trim() || "your location"}.`
-        );
-        setTicketDescription("");
-      } else {
-        alert("Failed to submit ticket: " + (data.error || "Please try again."));
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Network error";
-      alert("Error submitting ticket: " + msg);
-    } finally {
-      setTicketSubmitting(false);
     }
   };
 
@@ -633,21 +581,6 @@ export default function MKFHelpDesk() {
               <p className="text-xs text-slate-500 mt-0.5">Get help reporting an item</p>
             </button>
 
-            {/* 04 Dispatch volunteer */}
-            <button
-              onClick={() => {
-                stopSpeaking();
-                setActiveTab("ticket");
-              }}
-              className="w-full text-left bg-white hover:bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 shadow-2xs hover:border-teal-500 transition group"
-            >
-              <span className="text-xs font-bold text-slate-400 font-mono block mb-0.5 group-hover:text-teal-600 transition">
-                04
-              </span>
-              <h3 className="text-sm font-bold text-slate-900">Dispatch volunteer</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Request in-person assistance</p>
-            </button>
-
             {/* Bottom Callout Mode Switcher Card */}
             {activeTab === "chat" ? (
               <div className="bg-[#E8F5F1] border border-[#CDEAE2] rounded-2xl p-5 mt-4">
@@ -710,7 +643,7 @@ export default function MKFHelpDesk() {
                 </button>
               </div>
 
-              {/* Segmented Control Pill: [Chat | Voice | Dispatch Volunteer] */}
+              {/* Segmented Control Pill: [Chat | Voice] */}
               <div className="flex justify-center my-4">
                 <div className="inline-flex bg-slate-100 p-1 rounded-full text-xs font-semibold">
                   <button
@@ -719,7 +652,7 @@ export default function MKFHelpDesk() {
                       stopVoiceChat();
                       setActiveTab("chat");
                     }}
-                    className={`px-4 sm:px-5 py-1.5 rounded-full transition ${
+                    className={`px-6 py-1.5 rounded-full transition ${
                       activeTab === "chat"
                         ? "bg-[#005953] text-white shadow-xs font-bold"
                         : "text-slate-600 hover:text-slate-900"
@@ -729,31 +662,14 @@ export default function MKFHelpDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveTab("voice");
-                    }}
-                    className={`px-4 sm:px-5 py-1.5 rounded-full transition ${
+                    onClick={() => setActiveTab("voice")}
+                    className={`px-6 py-1.5 rounded-full transition ${
                       activeTab === "voice"
                         ? "bg-[#005953] text-white shadow-xs font-bold"
                         : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
                     Voice
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      stopVoiceChat();
-                      stopSpeaking();
-                      setActiveTab("ticket");
-                    }}
-                    className={`px-4 sm:px-5 py-1.5 rounded-full transition ${
-                      activeTab === "ticket"
-                        ? "bg-[#005953] text-white shadow-xs font-bold"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    Dispatch Volunteer
                   </button>
                 </div>
               </div>
@@ -1050,161 +966,6 @@ export default function MKFHelpDesk() {
                   <span className="text-[11px] text-slate-400 block">
                     You can mute or end your conversation at any time.
                   </span>
-                </div>
-              </div>
-            )}
-
-            {/* TAB CONTENT: TICKET / DISPATCH VOLUNTEER MODE */}
-            {activeTab === "ticket" && (
-              <div className="flex-1 flex flex-col justify-between py-2">
-                <div>
-                  <div className="text-left mb-6">
-                    <span className="text-[11px] font-bold text-[#008080] uppercase tracking-wider block mb-1">
-                      VOLUNTEER INCIDENT DISPATCH
-                    </span>
-                    <h3 className="text-xl sm:text-2xl font-black text-[#0B1E34] tracking-tight">
-                      Request in-person assistance
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Need physical help, medical assistance, or guidance? Submit this request to alert the festival volunteer squad.
-                    </p>
-                  </div>
-
-                  {ticketSuccess ? (
-                    <div className="bg-[#E8F5F1] border border-[#CDEAE2] rounded-2xl p-6 text-center space-y-4">
-                      <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                        <CheckCircle className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h4 className="text-base font-bold text-slate-900 mb-1">Volunteer Dispatched</h4>
-                        <p className="text-xs text-slate-600 max-w-md mx-auto">{ticketSuccess}</p>
-                      </div>
-                      <div className="flex justify-center gap-3 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => setTicketSuccess(null)}
-                          className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold px-4 py-2 rounded-full transition shadow-xs"
-                        >
-                          Submit another request
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab("chat")}
-                          className="bg-[#005953] hover:bg-[#004843] text-white text-xs font-bold px-5 py-2 rounded-full transition shadow-xs"
-                        >
-                          Back to AI Chat
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <form onSubmit={handleTicketSubmit} className="space-y-4 text-left">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                            Your Name
-                          </label>
-                          <input
-                            type="text"
-                            value={delegateName}
-                            disabled
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-700 font-medium"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                            Contact Phone / WhatsApp
-                          </label>
-                          <input
-                            type="tel"
-                            placeholder="+91 98765 43210"
-                            value={ticketPhone}
-                            onChange={(e) => setTicketPhone(e.target.value)}
-                            className="w-full bg-white border border-slate-300 focus:border-teal-700 focus:ring-1 focus:ring-teal-700 rounded-xl px-3.5 py-2 text-xs text-slate-800 transition"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                            Assistance Category
-                          </label>
-                          <select
-                            value={ticketCategory}
-                            onChange={(e) => setTicketCategory(e.target.value)}
-                            className="w-full bg-white border border-slate-300 focus:border-teal-700 focus:ring-1 focus:ring-teal-700 rounded-xl px-3.5 py-2 text-xs text-slate-800 transition"
-                          >
-                            <option value="General enquiry">General enquiry</option>
-                            <option value="Medical assistance">🚨 Medical assistance (Urgent)</option>
-                            <option value="Venue information">Venue information & Directions</option>
-                            <option value="Lost item assistance">Lost item inquiry</option>
-                            <option value="Food & Refreshment">Food & Refreshment</option>
-                            <option value="Accommodation">Accommodation & Rest area</option>
-                            <option value="Technical issue">Technical / Projection support</option>
-                            <option value="Other">Other assistance</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                            Your Current Location / Venue
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              required
-                              placeholder="e.g. Main Auditorium Row 12, Gate 1, Food Pavilion"
-                              value={ticketLocation}
-                              onChange={(e) => setTicketLocation(e.target.value)}
-                              className="w-full bg-white border border-slate-300 focus:border-teal-700 focus:ring-1 focus:ring-teal-700 rounded-xl pl-8 pr-3 py-2 text-xs text-slate-800 transition"
-                            />
-                            <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                          How can our volunteers assist you?
-                        </label>
-                        <textarea
-                          required
-                          rows={3}
-                          placeholder="Describe the issue or assistance required so the right team member is dispatched..."
-                          value={ticketDescription}
-                          onChange={(e) => setTicketDescription(e.target.value)}
-                          className="w-full bg-white border border-slate-300 focus:border-teal-700 focus:ring-1 focus:ring-teal-700 rounded-xl p-3 text-xs text-slate-800 transition"
-                        />
-                      </div>
-
-                      <div className="pt-2 flex items-center justify-between gap-4 flex-wrap">
-                        <button
-                          type="submit"
-                          disabled={ticketSubmitting || !ticketDescription.trim()}
-                          className="bg-[#005953] hover:bg-[#004843] disabled:opacity-50 text-white text-xs font-bold px-6 py-2.5 rounded-full transition shadow-xs flex items-center gap-2"
-                        >
-                          {ticketSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                          <span>Dispatch Volunteer to My Location</span>
-                        </button>
-
-                        <div className="text-[11px] text-slate-400">
-                          Priority dispatch to nearest on-duty volunteer squad.
-                        </div>
-                      </div>
-                    </form>
-                  )}
-                </div>
-
-                {/* Emergency Hotlines Callout Footer */}
-                <div className="pt-4 mt-6 border-t border-slate-100 flex items-center justify-between gap-3 text-left flex-wrap">
-                  <div className="text-[11px] text-slate-500">
-                    <span className="font-bold text-rose-700">Immediate Emergency: </span>
-                    <span>Medical: <a href="tel:+919800011122" className="text-teal-700 font-semibold underline">+91 98000 11122</a></span>
-                    <span className="mx-1.5">·</span>
-                    <span>Security Desk: <a href="tel:+919800033344" className="text-teal-700 font-semibold underline">+91 98000 33344</a></span>
-                  </div>
-                  <span className="text-[10px] text-slate-400">Gate 1 First Aid Station</span>
                 </div>
               </div>
             )}
