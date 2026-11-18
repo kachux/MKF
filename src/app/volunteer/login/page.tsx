@@ -11,7 +11,6 @@ export default function VolunteerLoginPage() {
   const { loginVolunteer, isVolunteer } = useAuth();
   const router = useRouter();
 
-  const [volunteerId, setVolunteerId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,16 +33,16 @@ export default function VolunteerLoginPage() {
     setLoading(true);
 
     try {
-      const volunteerName = volunteerId.trim() || "Field Volunteer";
-      const res = await loginVolunteer(password, volunteerName, "General Support");
+      const res = await loginVolunteer(password, "Field Volunteer", "General Support");
       if (res.success) {
         router.push("/volunteer/dashboard");
       } else {
-        setError(res.error || "Incorrect volunteer password (try 'mkf2026')");
+        setError(res.error || "Incorrect volunteer password (try 'mkf123')");
         setLoading(false);
       }
-    } catch (err: any) {
-      setError(err?.message || "Failed to authenticate volunteer");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to authenticate volunteer";
+      setError(msg);
       setLoading(false);
     }
   };
@@ -100,21 +99,8 @@ export default function VolunteerLoginPage() {
                 Stay up to date with festival movements and instructions from your admin.
               </p>
 
-              {/* Form */}
+              {/* Form - Password ONLY */}
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1.5">
-                    Volunteer ID
-                  </label>
-                  <input
-                    type="text"
-                    value={volunteerId}
-                    onChange={(e) => setVolunteerId(e.target.value)}
-                    placeholder="Enter your volunteer ID"
-                    className="w-full bg-[#FAF7F2] border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F59E0B]/20 focus:border-[#F59E0B] transition"
-                  />
-                </div>
-
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1.5">
                     Password
@@ -152,7 +138,7 @@ export default function VolunteerLoginPage() {
 
               <div className="text-center mt-5">
                 <span className="text-[11px] text-slate-400">
-                  Need your ID? Contact your team coordinator. (Demo: <code className="font-mono text-slate-600">mkf2026</code>)
+                  Enter your volunteer access passcode. (Demo: <code className="font-mono text-slate-600">mkf123</code>)
                 </span>
               </div>
             </div>

@@ -13,7 +13,9 @@ import {
   Calendar,
   Utensils,
   HelpCircle,
-  Maximize2
+  Maximize2,
+  Mic,
+  MicOff
 } from "lucide-react";
 import { useEventData } from "@/lib/store";
 
@@ -49,9 +51,61 @@ export default function MKFAIAssistant() {
   ]);
   const [loading, setLoading] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Toggle voice recognition
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+      setIsListening(false);
+      return;
+    }
+
+    if (typeof window === "undefined") return;
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Voice speech recognition is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onresult = (event: any) => {
+        let transcript = "";
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setInput(transcript);
+      };
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+      recognition.onerror = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      setIsListening(false);
+    }
+  };
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -463,6 +517,19 @@ export default function MKFAIAssistant() {
                 disabled={loading}
                 className="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
               />
+              <button
+                type="button"
+                onClick={toggleListening}
+                className={`p-2.5 rounded-xl transition flex items-center justify-center ${
+                  isListening
+                    ? "bg-rose-500 text-white animate-pulse"
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                }`}
+                title={isListening ? "Stop listening" : "Speak query with voice"}
+                aria-label="Voice input"
+              >
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
               <button
                 type="submit"
                 disabled={!input.trim() || loading}

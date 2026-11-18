@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import MKFLogo from "@/components/MKFLogo";
 import { useAuth } from "@/lib/authContext";
 import { useEventData, EventStore } from "@/lib/store";
@@ -21,8 +22,14 @@ import {
 } from "lucide-react";
 
 export default function VolunteerDashboardPage() {
+  const router = useRouter();
   const { user, logout } = useAuth();
   const { tasks, announcements } = useEventData();
+
+  const handleSignOut = () => {
+    logout();
+    router.push("/");
+  };
 
   const [activeTab, setActiveTab] = useState<"tasks" | "messages">("tasks");
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
@@ -103,7 +110,7 @@ export default function VolunteerDashboardPage() {
           </Link>
 
           <button
-            onClick={logout}
+            onClick={handleSignOut}
             className="text-xs font-semibold text-slate-500 hover:text-amber-800 flex items-center gap-1 bg-white border border-slate-200 px-3 py-1.5 rounded-full shadow-2xs transition"
           >
             <LogOut className="w-3.5 h-3.5" />

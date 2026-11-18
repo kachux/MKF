@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import MKFLogo from "@/components/MKFLogo";
 import { useEventData, EventStore } from "@/lib/store";
 import { useAuth } from "@/lib/authContext";
@@ -24,8 +25,14 @@ import {
 import { PriorityLevel, TargetAudience, Program } from "@/types";
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
   const { user, logout } = useAuth();
   const { programs, tasks, announcements } = useEventData();
+
+  const handleSignOut = () => {
+    logout();
+    router.push("/");
+  };
 
   // 01 / Alert Centre state
   const [alertAudience, setAlertAudience] = useState<"volunteers" | "all">("volunteers");
@@ -180,7 +187,7 @@ export default function AdminDashboardPage() {
           </Link>
 
           <button
-            onClick={logout}
+            onClick={handleSignOut}
             className="text-xs font-semibold text-slate-500 hover:text-rose-600 flex items-center gap-1 bg-white border border-slate-200 px-3 py-1.5 rounded-full shadow-2xs transition"
           >
             <LogOut className="w-3.5 h-3.5" />

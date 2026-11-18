@@ -8,7 +8,7 @@ interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   loginAdmin: (password: string) => Promise<{ success: boolean; error?: string }>;
-  loginVolunteer: (passcode: string, name: string, team?: string) => Promise<{ success: boolean; error?: string }>;
+  loginVolunteer: (passcode: string, name?: string, team?: string) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: (customRedirect?: string) => Promise<void>;
   loginWithGoogleCredential: (credential: string) => Promise<{ success: boolean; user?: UserProfile; error?: string }>;
   setAuthenticatedUser: (user: UserProfile) => void;
@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // 2. Volunteer login with backend passcode verification & registration
-  const loginVolunteer = async (passcode: string, name: string, team: string = "General Support") => {
+  const loginVolunteer = async (passcode: string, name: string = "Field Volunteer", team: string = "General Support") => {
     try {
       const res = await fetch("/api/auth/volunteer", {
         method: "POST",
@@ -102,10 +102,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         return { success: false, error: data.error || "Invalid volunteer access passcode" };
       }
-    } catch (err: any) {
+    } catch {
       // Offline fallback
-      if (passcode === "mkf2026") {
-        const cleanName = name.trim() || "Festival Volunteer";
+      if (passcode === "mkf123" || passcode === "mkf2026") {
+        const cleanName = (name && name.trim()) || "Field Volunteer";
         const volunteerUser: UserProfile = {
           id: `vol-${Date.now()}`,
           name: cleanName,
@@ -116,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveUserSession(volunteerUser);
         return { success: true };
       }
-      return { success: false, error: "Authentication service error. Try 'mkf2026'." };
+      return { success: false, error: "Authentication service error. Try 'mkf123'." };
     }
   };
 

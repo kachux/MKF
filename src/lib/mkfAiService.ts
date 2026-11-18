@@ -39,6 +39,7 @@ export interface FestivalContextData {
 const CANDIDATE_MODELS = [
   "gemini-3.5-flash-lite",
   "gemini-flash-lite-latest",
+  "gemini-3.1-flash-lite",
   "gemini-3.8-flash"
 ];
 
@@ -146,8 +147,8 @@ export async function askMKFAI(
               maxOutputTokens: 1024
             }
           }),
-          // 15 seconds timeout
-          signal: AbortSignal.timeout(15000)
+          // 10 seconds timeout
+          signal: AbortSignal.timeout(10000)
         }
       );
 

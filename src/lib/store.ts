@@ -464,8 +464,8 @@ export function useEventData() {
     // 3. Register memory subscriber
     listeners.add(refreshFromLocal);
 
-    // 4. Background polling sync every 2.5s for real-time synchronization across devices
-    const interval = setInterval(syncWithBackend, 2500);
+    // 4. Background polling sync every 6s for real-time synchronization across devices
+    const interval = setInterval(syncWithBackend, 6000);
 
     // 5. Cross-tab storage listener
     const handleStorage = (e: StorageEvent) => {

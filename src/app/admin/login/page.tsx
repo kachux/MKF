@@ -11,7 +11,6 @@ export default function AdminLoginPage() {
   const { loginAdmin, isAdmin } = useAuth();
   const router = useRouter();
 
-  const [adminId, setAdminId] = useState("admin");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,8 +34,9 @@ export default function AdminLoginPage() {
         setError(res.error || "Incorrect admin password (try 'admin123')");
         setLoading(false);
       }
-    } catch (err: any) {
-      setError(err?.message || "Failed to authenticate");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to authenticate";
+      setError(msg);
       setLoading(false);
     }
   };
@@ -93,22 +93,8 @@ export default function AdminLoginPage() {
                 Manage festival information and send alerts to volunteers and delegates.
               </p>
 
-              {/* Form */}
+              {/* Form - Password ONLY */}
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1.5">
-                    Admin ID
-                  </label>
-                  <input
-                    type="text"
-                    value={adminId}
-                    onChange={(e) => setAdminId(e.target.value)}
-                    placeholder="Enter your admin ID"
-                    required
-                    className="w-full bg-[#FAF7F2] border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#C01E44]/20 focus:border-[#C01E44] transition"
-                  />
-                </div>
-
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1.5">
                     Special password

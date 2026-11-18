@@ -58,6 +58,7 @@ export default function MKFHelpDesk() {
   const [voiceMessageSaved, setVoiceMessageSaved] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const transcriptRef = useRef<string>("");
   const recognitionRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -251,6 +252,7 @@ export default function MKFHelpDesk() {
 
     stopSpeaking();
     setSpeechTranscript("");
+    transcriptRef.current = "";
     setIsListening(true);
     setVoiceMessageSaved(false);
 
@@ -309,14 +311,16 @@ export default function MKFHelpDesk() {
             current += event.results[i][0].transcript;
           }
           setSpeechTranscript(current);
+          transcriptRef.current = current;
         };
 
         recognition.onend = () => {
           setIsListening(false);
           cleanupAudio();
-          // If we got words, send query!
-          if (recognitionRef.current?.latestTranscript) {
-            handleSendQuery(recognitionRef.current.latestTranscript, true);
+          // If we got speech input, send query
+          const finalQuery = transcriptRef.current.trim();
+          if (finalQuery) {
+            handleSendQuery(finalQuery, true);
           }
         };
 
@@ -333,6 +337,7 @@ export default function MKFHelpDesk() {
         setTimeout(() => {
           const simPrompt = "Show me today's schedule";
           setSpeechTranscript(simPrompt);
+          transcriptRef.current = simPrompt;
           setTimeout(() => {
             stopVoiceChat();
             handleSendQuery(simPrompt, true);
@@ -370,8 +375,9 @@ export default function MKFHelpDesk() {
     }
     cleanupAudio();
 
-    if (speechTranscript.trim()) {
-      handleSendQuery(speechTranscript.trim(), true);
+    const textToSend = transcriptRef.current.trim() || speechTranscript.trim();
+    if (textToSend) {
+      handleSendQuery(textToSend, true);
     }
   };
 
@@ -760,6 +766,17 @@ export default function MKFHelpDesk() {
                       disabled={loading}
                       className="flex-1 outline-none text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 bg-transparent"
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("voice");
+                        startVoiceChat();
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-teal-700 transition mr-1"
+                      title="Speak with Voice"
+                    >
+                      <Mic className="w-4 h-4" />
+                    </button>
                     <button
                       type="submit"
                       disabled={!inputText.trim() || loading}
