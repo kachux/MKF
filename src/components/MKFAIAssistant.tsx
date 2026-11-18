@@ -15,7 +15,9 @@ import {
   HelpCircle,
   Maximize2,
   Mic,
-  MicOff
+  MicOff,
+  Volume2,
+  VolumeX
 } from "lucide-react";
 import { useEventData } from "@/lib/store";
 
@@ -52,10 +54,39 @@ export default function MKFAIAssistant() {
   const [loading, setLoading] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState<string | null>(null);
+  const [autoVoice, setAutoVoice] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Text-to-speech engine
+  const speakText = (text: string, msgId?: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      if (isSpeaking === msgId) {
+        setIsSpeaking(null);
+        return;
+      }
+    }
+    const cleanText = text
+      .replace(/[*_#`[\]()]/g, "")
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/\/[\w-]+/g, "")
+      .trim();
+
+    if (!cleanText) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setIsSpeaking(null);
+    utterance.onerror = () => setIsSpeaking(null);
+    if (msgId) setIsSpeaking(msgId);
+    window.speechSynthesis.speak(utterance);
+  };
 
   // Toggle voice recognition
   const toggleListening = () => {
@@ -213,6 +244,9 @@ export default function MKFAIAssistant() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+      if (autoVoice && data.text) {
+        speakText(data.text, assistantMessage.id);
+      }
       if (!isOpen) {
         setHasUnread(true);
       }
@@ -366,6 +400,19 @@ export default function MKFAIAssistant() {
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
 
+              <button
+                type="button"
+                onClick={() => setAutoVoice(!autoVoice)}
+                title={autoVoice ? "Voice auto-narration is ON" : "Turn voice auto-narration ON"}
+                className={`p-1.5 rounded-lg transition ${
+                  autoVoice
+                    ? "bg-blue-500 text-white shadow-xs"
+                    : "hover:text-white hover:bg-white/10 text-blue-200"
+                }`}
+              >
+                {autoVoice ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5 opacity-75" />}
+              </button>
+
               <Link
                 href="/mkf-ai"
                 onClick={() => setIsOpen(false)}
@@ -442,10 +489,30 @@ export default function MKFAIAssistant() {
                   )}
 
                   <div
-                    className={`text-[9px] mt-1.5 flex items-center justify-end ${
+                    className={`text-[9px] mt-1.5 flex items-center justify-between gap-2 ${
                       msg.role === "user" ? "text-blue-100" : "text-slate-400"
                     }`}
                   >
+                    {msg.role === "assistant" && (
+                      <button
+                        type="button"
+                        onClick={() => speakText(msg.content, msg.id)}
+                        className="inline-flex items-center gap-1 hover:text-blue-600 transition"
+                        title={isSpeaking === msg.id ? "Stop voice" : "Listen to answer"}
+                      >
+                        {isSpeaking === msg.id ? (
+                          <>
+                            <VolumeX className="w-3 h-3 text-red-500 animate-pulse" />
+                            <span className="text-red-500 font-semibold">Stop</span>
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="w-3 h-3 text-slate-400 hover:text-blue-600" />
+                            <span>Listen</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                     <span>{msg.timestamp}</span>
                   </div>
                 </div>
