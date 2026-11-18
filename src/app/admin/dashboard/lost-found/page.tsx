@@ -14,8 +14,7 @@ export default function AdminLostFoundPage() {
 
   const handleDelete = (id: string) => {
     if (confirm("Delete this lost item report?")) {
-      const updated = lostFound.filter((i) => i.id !== id);
-      EventStore.saveLostFound(updated);
+      EventStore.deleteLostFound(id);
     }
   };
 

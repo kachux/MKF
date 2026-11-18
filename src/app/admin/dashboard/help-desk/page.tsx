@@ -34,8 +34,7 @@ export default function AdminHelpDeskPage() {
 
   const handleDelete = (id: string) => {
     if (confirm("Delete this help request?")) {
-      const updated = helpRequests.filter((r) => r.id !== id);
-      EventStore.saveHelpRequests(updated);
+      EventStore.deleteHelpRequest(id);
     }
   };
 

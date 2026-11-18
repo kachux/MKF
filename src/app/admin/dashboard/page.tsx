@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MKFLogo from "@/components/MKFLogo";
@@ -55,6 +55,19 @@ export default function AdminDashboardPage() {
   const [progSaving, setProgSaving] = useState(false);
   const [progSuccess, setProgSuccess] = useState(false);
 
+  // Sync selected program inputs when programs load
+  React.useEffect(() => {
+    if (programs.length > 0) {
+      const p = programs.find((prog) => prog.id === selectedProgramId) || programs[0];
+      if (p) {
+        setSelectedProgramId(p.id);
+        setStartTime(p.start_time);
+        setEndTime(p.end_time);
+        setVenue(p.venue);
+      }
+    }
+  }, [programs, selectedProgramId]);
+
   // 03 / Tasks state
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskVenue, setNewTaskVenue] = useState("The Grand Forum");
@@ -85,14 +98,6 @@ export default function AdminDashboardPage() {
 
     EventStore.updateProgram(selectedProgram.id, updatedFields);
 
-    try {
-      await fetch("/api/programs", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selectedProgram.id, ...updatedFields }),
-      });
-    } catch {}
-
     if (notifyDelegates) {
       EventStore.addAnnouncement({
         title: `Schedule Update: ${selectedProgram.title}`,
@@ -117,20 +122,12 @@ export default function AdminDashboardPage() {
     const newAlert = {
       title: alertTitle.trim(),
       message: alertMessage.trim(),
-      target: alertAudience === "volunteers" ? ("volunteer" as TargetAudience) : ("all" as TargetAudience),
+      target: alertAudience === "volunteers" ? ("volunteers" as TargetAudience) : ("all" as TargetAudience),
       priority: alertAudience === "volunteers" ? ("high" as PriorityLevel) : ("urgent" as PriorityLevel),
       author: "Admin Organiser",
     };
 
     EventStore.addAnnouncement(newAlert);
-
-    try {
-      await fetch("/api/announcements", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newAlert),
-      });
-    } catch {}
 
     setAlertSending(false);
     setAlertSuccess(true);
@@ -145,7 +142,10 @@ export default function AdminDashboardPage() {
     setTaskSaving(true);
     const newTask = {
       title: newTaskTitle.trim(),
+      instructions: `Assigned venue: ${newTaskVenue}. Priority: ${newTaskPriority}.`,
+      description: `Assigned venue: ${newTaskVenue}. Priority: ${newTaskPriority}.`,
       venue: newTaskVenue,
+      location: newTaskVenue,
       priority: newTaskPriority,
       status: "pending" as const,
       assigned_to: "Field Volunteer",
@@ -153,14 +153,6 @@ export default function AdminDashboardPage() {
     };
 
     EventStore.addTask(newTask);
-
-    try {
-      await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newTask),
-      });
-    } catch {}
 
     setNewTaskTitle("");
     setTaskSaving(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MKFLogo from "@/components/MKFLogo";
@@ -23,8 +23,14 @@ import {
 
 export default function VolunteerDashboardPage() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, isVolunteer, isAdmin, isLoading, logout } = useAuth();
   const { tasks, announcements } = useEventData();
+
+  useEffect(() => {
+    if (!isLoading && !isVolunteer && !isAdmin) {
+      router.push("/volunteer/login");
+    }
+  }, [isLoading, isVolunteer, isAdmin, router]);
 
   const handleSignOut = () => {
     logout();
@@ -54,18 +60,6 @@ export default function VolunteerDashboardPage() {
       status: nextStatus,
       assigned_to: user?.name || "Active Volunteer",
     });
-
-    try {
-      fetch("/api/tasks", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: taskId,
-          status: nextStatus,
-          assigned_to: user?.name || "Active Volunteer",
-        }),
-      });
-    } catch {}
   };
 
   const handleSendAdminMessage = (e: React.FormEvent) => {
@@ -88,6 +82,17 @@ export default function VolunteerDashboardPage() {
       setAdminMessageModal(false);
     }, 2000);
   };
+
+  if (isLoading || (!isVolunteer && !isAdmin)) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <p className="text-xs text-slate-500 font-medium">Verifying volunteer authorization...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] flex flex-col justify-between selection:bg-amber-500 selection:text-white">
@@ -305,15 +310,15 @@ export default function VolunteerDashboardPage() {
                               {task.title}
                             </h3>
                             <p className="text-xs text-slate-500 line-clamp-2">
-                              {task.description}
+                              {task.description || task.instructions || "Assigned task for volunteer radar"}
                             </p>
                           </div>
 
                           <div className="text-right flex-shrink-0">
                             <span className="text-xs font-mono font-bold text-slate-700 block">
-                              {task.due_time}
+                              {task.due_time || "Immediate"}
                             </span>
-                            <span className="text-[10px] text-slate-400 block">{task.venue}</span>
+                            <span className="text-[10px] text-slate-400 block">{task.venue || task.location || "Festival Grounds"}</span>
                           </div>
                         </div>
 
@@ -369,22 +374,34 @@ export default function VolunteerDashboardPage() {
                   </div>
 
                   {/* From your admin Card */}
-                  <div className="bg-[#FFF1F2] border border-[#FECDD3] rounded-2xl p-5 shadow-2xs">
-                    <span className="text-[11px] font-bold text-[#BE123C] uppercase tracking-wider block mb-1">
-                      FROM YOUR ADMIN
-                    </span>
-                    <h3 className="text-sm font-bold text-[#9F1239] mb-1">Volunteer alert</h3>
-                    <p className="text-xs text-[#BE123C] leading-relaxed mb-4">
-                      Please check the Lost & Found desk at Stage 1 for any unclaimed backpacks reported before noon.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setAdminMessageModal(true)}
-                      className="w-full bg-[#BE123C] hover:bg-[#9F1239] text-white text-xs font-bold py-2.5 px-4 rounded-full text-center transition"
-                    >
-                      Open conversation →
-                    </button>
-                  </div>
+                  {(() => {
+                    const volunteerAlerts = announcements.filter(
+                      (a) => a.target === "volunteers" || a.target === "volunteer" || a.target === "all"
+                    );
+                    const latestAlert = volunteerAlerts[0];
+                    return (
+                      <div className="bg-[#FFF1F2] border border-[#FECDD3] rounded-2xl p-5 shadow-2xs">
+                        <span className="text-[11px] font-bold text-[#BE123C] uppercase tracking-wider block mb-1">
+                          FROM YOUR ADMIN
+                        </span>
+                        <h3 className="text-sm font-bold text-[#9F1239] mb-1">
+                          {latestAlert ? latestAlert.title : "Volunteer alert"}
+                        </h3>
+                        <p className="text-xs text-[#BE123C] leading-relaxed mb-4">
+                          {latestAlert
+                            ? latestAlert.message
+                            : "Please check the Lost & Found desk at Stage 1 for any unclaimed backpacks reported before noon."}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setAdminMessageModal(true)}
+                          className="w-full bg-[#BE123C] hover:bg-[#9F1239] text-white text-xs font-bold py-2.5 px-4 rounded-full text-center transition"
+                        >
+                          Message admin coordinator →
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             ) : (
@@ -393,20 +410,24 @@ export default function VolunteerDashboardPage() {
                 <h2 className="text-base font-black text-[#0F2841] mb-2">
                   Live Admin Broadcasts & Bulletins
                 </h2>
-                {announcements.map((a) => (
-                  <div key={a.id} className="p-4 rounded-2xl border border-slate-100 bg-[#FAF7F2] space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-800">{a.title}</span>
-                      <span className="text-[10px] text-slate-400">
-                        {new Date(a.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {announcements.length === 0 ? (
+                  <p className="text-xs text-slate-400">No announcements posted yet.</p>
+                ) : (
+                  announcements.map((a) => (
+                    <div key={a.id} className="p-4 rounded-2xl border border-slate-100 bg-[#FAF7F2] space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800">{a.title}</span>
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(a.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">{a.message}</p>
+                      <span className="text-[10px] text-slate-400 font-semibold block pt-1">
+                        By {a.author || "Admin Control"}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">{a.message}</p>
-                    <span className="text-[10px] text-slate-400 font-semibold block pt-1">
-                      By {a.author || "Admin Control"}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
           </div>
@@ -439,12 +460,12 @@ export default function VolunteerDashboardPage() {
             </h3>
 
             <div className="flex items-center gap-3 text-xs text-slate-500 mb-4">
-              <span>Venue: <strong>{selectedTask.venue}</strong></span>
-              <span>Due: <strong>{selectedTask.due_time}</strong></span>
+              <span>Venue: <strong>{selectedTask.venue || selectedTask.location || "Festival Grounds"}</strong></span>
+              <span>Due: <strong>{selectedTask.due_time || "Immediate"}</strong></span>
             </div>
 
             <div className="bg-[#FAF7F2] border border-slate-200/80 rounded-2xl p-4 text-xs text-slate-700 leading-relaxed mb-6">
-              {selectedTask.description}
+              {selectedTask.description || selectedTask.instructions || "No detailed instructions provided."}
             </div>
 
             <button

@@ -126,6 +126,7 @@ function initSchema(db: DatabaseSyncType) {
       description TEXT NOT NULL,
       location TEXT NOT NULL,
       contact TEXT,
+      phone TEXT,
       status TEXT NOT NULL DEFAULT 'open',
       assigned_to TEXT,
       created_at TEXT NOT NULL
@@ -137,8 +138,11 @@ function initSchema(db: DatabaseSyncType) {
     CREATE TABLE IF NOT EXISTS volunteer_tasks (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
-      instructions TEXT NOT NULL,
-      location TEXT NOT NULL,
+      instructions TEXT,
+      description TEXT,
+      location TEXT,
+      venue TEXT,
+      due_time TEXT,
       priority TEXT NOT NULL DEFAULT 'normal',
       status TEXT NOT NULL DEFAULT 'pending',
       assigned_to TEXT NOT NULL DEFAULT 'all',
@@ -148,6 +152,12 @@ function initSchema(db: DatabaseSyncType) {
       completed_at TEXT
     );
   `);
+
+  // Ensure missing columns exist in existing database tables
+  try { db.exec(`ALTER TABLE volunteer_tasks ADD COLUMN description TEXT;`); } catch {}
+  try { db.exec(`ALTER TABLE volunteer_tasks ADD COLUMN venue TEXT;`); } catch {}
+  try { db.exec(`ALTER TABLE volunteer_tasks ADD COLUMN due_time TEXT;`); } catch {}
+  try { db.exec(`ALTER TABLE help_requests ADD COLUMN phone TEXT;`); } catch {}
 
   // 8. Active Volunteers Registry
   db.exec(`
@@ -291,20 +301,23 @@ function seedInitialData(db: DatabaseSyncType) {
   const taskCount = db.prepare("SELECT COUNT(*) as count FROM volunteer_tasks").get() as { count: number };
   if (taskCount.count === 0) {
     const insertTask = db.prepare(`
-      INSERT INTO volunteer_tasks (id, title, instructions, location, priority, status, assigned_to, team, created_at, accepted_at, completed_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO volunteer_tasks (id, title, instructions, description, location, venue, due_time, priority, status, assigned_to, team, created_at, accepted_at, completed_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     for (const t of initialVolunteerTasks) {
       insertTask.run(
         t.id,
         t.title,
-        t.instructions,
-        t.location,
+        t.instructions || t.description || "",
+        t.description || t.instructions || "",
+        t.location || t.venue || "Festival Grounds",
+        t.venue || t.location || "Festival Grounds",
+        t.due_time || "Immediate",
         t.priority,
         t.status,
         t.assigned_to,
         t.team || "General Support",
-        t.created_at,
+        t.created_at || new Date().toISOString(),
         t.accepted_at || null,
         t.completed_at || null
       );
@@ -420,10 +433,10 @@ export const ServerDb = {
   },
 
   addProgram(p: any) {
-    const id = `prog-${Date.now()}`;
-    const now = new Date().toISOString();
+    const id = p.id || `prog-${Date.now()}`;
+    const now = p.created_at || new Date().toISOString();
     getDb().prepare(`
-      INSERT INTO programs (id, title, description, speaker, start_time, end_time, venue, category, status, created_at)
+      INSERT OR REPLACE INTO programs (id, title, description, speaker, start_time, end_time, venue, category, status, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, p.title, p.description || "", p.speaker || "", p.start_time, p.end_time, p.venue, p.category || "", p.status || "upcoming", now);
     return { id, ...p, created_at: now };
@@ -451,10 +464,10 @@ export const ServerDb = {
   },
 
   addAnnouncement(a: any) {
-    const id = `ann-${Date.now()}`;
-    const now = new Date().toISOString();
+    const id = a.id || `ann-${Date.now()}`;
+    const now = a.created_at || new Date().toISOString();
     getDb().prepare(`
-      INSERT INTO announcements (id, title, message, target, priority, author, created_at)
+      INSERT OR REPLACE INTO announcements (id, title, message, target, priority, author, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(id, a.title, a.message, a.target || "all", a.priority || "normal", a.author || "Admin Control", now);
     return { id, ...a, created_at: now };
@@ -470,10 +483,10 @@ export const ServerDb = {
   },
 
   addFoodPrayer(fp: any) {
-    const id = `fp-${Date.now()}`;
-    const now = new Date().toISOString();
+    const id = fp.id || `fp-${Date.now()}`;
+    const now = fp.created_at || new Date().toISOString();
     getDb().prepare(`
-      INSERT INTO food_prayer (id, type, title, time, location, status, notes, created_at)
+      INSERT OR REPLACE INTO food_prayer (id, type, title, time, location, status, notes, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, fp.type, fp.title, fp.time, fp.location, fp.status || "upcoming", fp.notes || "", now);
     return { id, ...fp, created_at: now };
@@ -501,10 +514,10 @@ export const ServerDb = {
   },
 
   addLostFound(lf: any) {
-    const id = `lf-${Date.now()}`;
-    const now = new Date().toISOString();
+    const id = lf.id || `lf-${Date.now()}`;
+    const now = lf.created_at || new Date().toISOString();
     getDb().prepare(`
-      INSERT INTO lost_found (id, item_name, description, category, location, image_url, status, contact_name, contact_phone, contact_email, created_at)
+      INSERT OR REPLACE INTO lost_found (id, item_name, description, category, location, image_url, status, contact_name, contact_phone, contact_email, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, lf.item_name, lf.description, lf.category, lf.location, lf.image_url || "", lf.status || "reported", lf.contact_name, lf.contact_phone, lf.contact_email || "", now);
     return { id, ...lf, created_at: now };
@@ -528,28 +541,37 @@ export const ServerDb = {
 
   // Help Requests CRUD
   getHelpRequests() {
-    return getDb().prepare("SELECT * FROM help_requests ORDER BY created_at DESC").all();
+    const rows = getDb().prepare("SELECT * FROM help_requests ORDER BY created_at DESC").all() as any[];
+    return rows.map((r) => ({
+      ...r,
+      contact: r.contact || r.phone || "",
+      phone: r.phone || r.contact || "",
+    }));
   },
 
   addHelpRequest(hr: any) {
-    const id = `help-${Date.now()}`;
-    const now = new Date().toISOString();
+    const id = hr.id || `help-${Date.now()}`;
+    const now = hr.created_at || new Date().toISOString();
+    const contact = hr.contact || hr.phone || "";
+    const phone = hr.phone || hr.contact || "";
     getDb().prepare(`
-      INSERT INTO help_requests (id, name, category, description, location, contact, status, assigned_to, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, hr.name, hr.category, hr.description, hr.location, hr.contact || "", hr.status || "open", hr.assigned_to || "", now);
-    return { id, ...hr, created_at: now };
+      INSERT OR REPLACE INTO help_requests (id, name, category, description, location, contact, phone, status, assigned_to, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, hr.name, hr.category, hr.description, hr.location, contact, phone, hr.status || "open", hr.assigned_to || "", now);
+    return { id, ...hr, contact, phone, created_at: now };
   },
 
   updateHelpRequest(id: string, updates: any) {
     const existing = getDb().prepare("SELECT * FROM help_requests WHERE id = ?").get(id) as any;
     if (!existing) return null;
     const merged = { ...existing, ...updates };
+    const contact = merged.contact || merged.phone || "";
+    const phone = merged.phone || merged.contact || "";
     getDb().prepare(`
       UPDATE help_requests
-      SET name = ?, category = ?, description = ?, location = ?, contact = ?, status = ?, assigned_to = ?
+      SET name = ?, category = ?, description = ?, location = ?, contact = ?, phone = ?, status = ?, assigned_to = ?
       WHERE id = ?
-    `).run(merged.name, merged.category, merged.description, merged.location, merged.contact, merged.status, merged.assigned_to, id);
+    `).run(merged.name, merged.category, merged.description, merged.location, contact, phone, merged.status, merged.assigned_to, id);
     return merged;
   },
 
@@ -559,28 +581,90 @@ export const ServerDb = {
 
   // Volunteer Tasks CRUD
   getTasks() {
-    return getDb().prepare("SELECT * FROM volunteer_tasks ORDER BY created_at DESC").all();
+    const rows = getDb().prepare("SELECT * FROM volunteer_tasks ORDER BY created_at DESC").all() as any[];
+    return rows.map((r) => ({
+      ...r,
+      description: r.description || r.instructions || "",
+      instructions: r.instructions || r.description || "",
+      location: r.location || r.venue || "Festival Grounds",
+      venue: r.venue || r.location || "Festival Grounds",
+      due_time: r.due_time || "Immediate",
+    }));
   },
 
   addTask(t: any) {
-    const id = `task-${Date.now()}`;
-    const now = new Date().toISOString();
+    const id = t.id || `task-${Date.now()}`;
+    const now = t.created_at || new Date().toISOString();
+    const instructions = t.instructions || t.description || t.title || "";
+    const description = t.description || t.instructions || t.title || "";
+    const location = t.location || t.venue || "Festival Grounds";
+    const venue = t.venue || t.location || "Festival Grounds";
+    const dueTime = t.due_time || "Immediate";
+    const priority = t.priority || "normal";
+    const status = t.status || "pending";
+    const assignedTo = t.assigned_to || "all";
+    const team = t.team || "General Support";
+
     getDb().prepare(`
-      INSERT INTO volunteer_tasks (id, title, instructions, location, priority, status, assigned_to, team, created_at, accepted_at, completed_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, t.title, t.instructions, t.location, t.priority || "normal", t.status || "pending", t.assigned_to || "all", t.team || "General Support", now, null, null);
-    return { id, ...t, created_at: now };
+      INSERT OR REPLACE INTO volunteer_tasks (id, title, instructions, description, location, venue, due_time, priority, status, assigned_to, team, created_at, accepted_at, completed_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, t.title, instructions, description, location, venue, dueTime, priority, status, assignedTo, team, now, t.accepted_at || null, t.completed_at || null);
+
+    return {
+      id,
+      title: t.title,
+      instructions,
+      description,
+      location,
+      venue,
+      due_time: dueTime,
+      priority,
+      status,
+      assigned_to: assignedTo,
+      team,
+      created_at: now,
+      accepted_at: t.accepted_at,
+      completed_at: t.completed_at,
+    };
   },
 
   updateTask(id: string, updates: any) {
     const existing = getDb().prepare("SELECT * FROM volunteer_tasks WHERE id = ?").get(id) as any;
     if (!existing) return null;
-    const merged = { ...existing, ...updates };
+    const now = new Date().toISOString();
+    const acceptedAt = updates.status === "accepted" && !existing.accepted_at
+      ? now
+      : (updates.accepted_at !== undefined ? updates.accepted_at : existing.accepted_at);
+    const completedAt = updates.status === "completed"
+      ? now
+      : (updates.completed_at !== undefined ? updates.completed_at : existing.completed_at);
+
+    const merged = {
+      ...existing,
+      ...updates,
+      accepted_at: acceptedAt,
+      completed_at: completedAt,
+    };
+
     getDb().prepare(`
       UPDATE volunteer_tasks
-      SET title = ?, instructions = ?, location = ?, priority = ?, status = ?, assigned_to = ?, team = ?, accepted_at = ?, completed_at = ?
+      SET title = ?, instructions = ?, description = ?, location = ?, venue = ?, due_time = ?, priority = ?, status = ?, assigned_to = ?, team = ?, accepted_at = ?, completed_at = ?
       WHERE id = ?
-    `).run(merged.title, merged.instructions, merged.location, merged.priority, merged.status, merged.assigned_to, merged.team, merged.accepted_at || null, merged.completed_at || null, id);
+    `).run(
+      merged.title,
+      merged.instructions || merged.description || "",
+      merged.description || merged.instructions || "",
+      merged.location || merged.venue || "",
+      merged.venue || merged.location || "",
+      merged.due_time || "",
+      merged.priority,
+      merged.status,
+      merged.assigned_to,
+      merged.team || "General Support",
+      merged.accepted_at || null,
+      merged.completed_at || null,
+      id
+    );
     return merged;
   },
 

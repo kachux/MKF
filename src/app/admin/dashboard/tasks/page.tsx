@@ -45,8 +45,7 @@ export default function AdminTasksPage() {
 
   const handleDelete = (id: string) => {
     if (confirm("Delete this volunteer task?")) {
-      const updated = tasks.filter((t) => t.id !== id);
-      EventStore.saveTasks(updated);
+      EventStore.deleteTask(id);
     }
   };
 

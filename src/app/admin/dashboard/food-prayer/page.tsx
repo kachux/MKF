@@ -41,8 +41,7 @@ export default function AdminFoodPrayerPage() {
 
   const handleDelete = (id: string) => {
     if (confirm("Delete this food/prayer entry?")) {
-      const updated = foodPrayer.filter((item) => item.id !== id);
-      EventStore.saveFoodPrayer(updated);
+      EventStore.deleteFoodPrayer(id);
     }
   };
 
