@@ -37,10 +37,10 @@ export interface FestivalContextData {
 }
 
 const CANDIDATE_MODELS = [
-  "gemini-flash-lite-latest",
-  "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
-  "gemini-flash-latest"
+  "gemini-3.1-flash-lite-preview",
+  "gemini-3.5-flash-lite",
+  "gemini-3.8-flash"
 ];
 
 function buildSystemPrompt(contextData?: FestivalContextData): string {
@@ -105,7 +105,7 @@ export async function askMKFAI(
   messages: ChatMessage[],
   contextData?: FestivalContextData
 ): Promise<{ text: string; modelUsed: string }> {
-  const apiKey = process.env.MKF_AI_API_KEY;
+  const apiKey = process.env.MKF_AI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("MKF_AI_API_KEY is not configured on the server.");
   }
@@ -147,8 +147,8 @@ export async function askMKFAI(
               maxOutputTokens: 1024
             }
           }),
-          // 10 seconds timeout
-          signal: AbortSignal.timeout(10000)
+          // 7 seconds timeout for fast failover
+          signal: AbortSignal.timeout(7000)
         }
       );
 
@@ -231,7 +231,7 @@ export async function draftAnnouncementWithMKFAI(prompt: string): Promise<{
   priority: "normal" | "high" | "urgent";
   target: "all" | "audience" | "volunteers";
 }> {
-  const apiKey = process.env.MKF_AI_API_KEY;
+  const apiKey = process.env.MKF_AI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("MKF_AI_API_KEY is not configured.");
   }
@@ -261,7 +261,7 @@ Return ONLY valid JSON matching this exact structure with no markdown backticks 
               responseMimeType: "application/json"
             }
           }),
-          signal: AbortSignal.timeout(10000)
+          signal: AbortSignal.timeout(7000)
         }
       );
 

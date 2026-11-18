@@ -153,22 +153,8 @@ export default function MKFAIAssistant() {
     }
   }, [isOpen]);
 
-  // Do not render floating widget on Figma pages or the dedicated help-desk/mkf-ai page
-  const figmaPages = [
-    "/",
-    "/schedule",
-    "/lost-found",
-    "/lost-found/report",
-    "/help-desk",
-    "/admin/dashboard",
-    "/volunteer/dashboard",
-    "/login",
-    "/admin/login",
-    "/volunteer/login",
-    "/delegate",
-    "/mkf-ai",
-  ];
-  if (figmaPages.includes(pathname)) {
+  // Do not render floating widget on full-screen Help Desk or AI pages
+  if (pathname === "/help-desk" || pathname === "/mkf-ai") {
     return null;
   }
 
