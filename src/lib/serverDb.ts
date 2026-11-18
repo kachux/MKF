@@ -4,6 +4,7 @@ const { DatabaseSync } = require("node:sqlite");
 type DatabaseSyncType = any;
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import {
   initialPrograms,
   initialAnnouncements,
@@ -13,22 +14,75 @@ import {
   initialVolunteerTasks,
 } from "./mockData";
 
-// Path to SQLite database file
-const DATA_DIR = path.join(process.cwd(), "data");
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+// Resolve a writable database path with graceful fallbacks
+function resolveDbPath(): string {
+  if (process.env.USE_MEMORY_DB === "true") {
+    return ":memory:";
+  }
+
+  // 1. Try local data/mkf_festival.db
+  try {
+    const dataDir = path.join(process.cwd(), "data");
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    const testFile = path.join(dataDir, `.test_write_${Date.now()}`);
+    fs.writeFileSync(testFile, "ok");
+    fs.unlinkSync(testFile);
+    return path.join(dataDir, "mkf_festival.db");
+  } catch (err) {
+    // Expected on read-only environments (e.g. Vercel serverless)
+  }
+
+  // 2. Try os.tmpdir() (always writable on Vercel, AWS Lambda, Docker, Linux, Windows)
+  try {
+    const tmpDir = path.join(os.tmpdir(), "mkf_festival_data");
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+    const targetDbPath = path.join(tmpDir, "mkf_festival.db");
+    const localDbPath = path.join(process.cwd(), "data", "mkf_festival.db");
+
+    // Copy existing seed database to tmp directory if not already copied
+    if (fs.existsSync(localDbPath) && !fs.existsSync(targetDbPath)) {
+      try {
+        fs.copyFileSync(localDbPath, targetDbPath);
+      } catch {}
+    }
+    return targetDbPath;
+  } catch (err) {
+    // If tmp is restricted, fallback to memory
+  }
+
+  // 3. Guaranteed in-memory fallback
+  return ":memory:";
 }
-const DB_PATH = path.join(DATA_DIR, "mkf_festival.db");
 
 // Singleton connection
 let dbInstance: DatabaseSyncType | null = null;
 
 export function getDb(): DatabaseSyncType {
-  if (!dbInstance) {
-    dbInstance = new DatabaseSync(DB_PATH);
+  if (dbInstance) return dbInstance;
+
+  const targetPath = resolveDbPath();
+  try {
+    dbInstance = new DatabaseSync(targetPath);
+    try {
+      dbInstance.exec("PRAGMA journal_mode = WAL;");
+    } catch {}
     initSchema(dbInstance);
+    return dbInstance;
+  } catch (err) {
+    console.error(`Failed to open SQLite database at "${targetPath}", falling back to :memory:`, err);
+    try {
+      dbInstance = new DatabaseSync(":memory:");
+      initSchema(dbInstance);
+      return dbInstance;
+    } catch (memErr) {
+      console.error("Critical: Failed to create in-memory database:", memErr);
+      throw err;
+    }
   }
-  return dbInstance;
 }
 
 function initSchema(db: DatabaseSyncType) {
@@ -332,17 +386,34 @@ function seedInitialData(db: DatabaseSyncType) {
 export const ServerDb = {
   // Settings & Passwords
   getSetting(key: string, fallback = ""): string {
-    const row = getDb().prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined;
-    return row ? row.value : fallback;
+    try {
+      const row = getDb().prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined;
+      return row ? row.value : fallback;
+    } catch (e) {
+      console.error(`getSetting error for ${key}:`, e);
+      return fallback;
+    }
   },
 
   setSetting(key: string, value: string) {
-    getDb().prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, value);
+    try {
+      getDb().prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, value);
+    } catch (e) {
+      console.error(`setSetting error for ${key}:`, e);
+    }
   },
 
   verifyAdminPassword(password: string): boolean {
-    const current = this.getSetting("admin_password", "admin123");
-    return password === current || password === "admin123" || password === process.env.ADMIN_PASSWORD;
+    const envAdmin = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "admin123";
+    if (password === envAdmin || password === "admin123") {
+      return true;
+    }
+    try {
+      const current = this.getSetting("admin_password", envAdmin);
+      return password === current;
+    } catch {
+      return password === envAdmin || password === "admin123";
+    }
   },
 
   setAdminPassword(newPassword: string) {
@@ -350,14 +421,16 @@ export const ServerDb = {
   },
 
   verifyVolunteerPasscode(passcode: string): boolean {
-    const current = this.getSetting("volunteer_passcode", "mkf2026");
-    return (
-      passcode === current ||
-      passcode === "mkf2026" ||
-      passcode === "mkf123" ||
-      passcode === process.env.VOLUNTEER_PASSWORD ||
-      passcode === process.env.NEXT_PUBLIC_VOLUNTEER_PASSWORD
-    );
+    const envVol = process.env.VOLUNTEER_PASSWORD || process.env.NEXT_PUBLIC_VOLUNTEER_PASSWORD || "mkf123";
+    if (passcode === envVol || passcode === "mkf123" || passcode === "mkf2026") {
+      return true;
+    }
+    try {
+      const current = this.getSetting("volunteer_passcode", envVol);
+      return passcode === current || passcode === "mkf123" || passcode === "mkf2026";
+    } catch {
+      return passcode === envVol || passcode === "mkf123" || passcode === "mkf2026";
+    }
   },
 
   setVolunteerPasscode(newPasscode: string) {
@@ -366,12 +439,16 @@ export const ServerDb = {
 
   // Volunteers Registry
   registerVolunteer(volunteer: { id: string; name: string; team: string; avatar?: string }) {
-    const db = getDb();
-    const now = new Date().toISOString();
-    db.prepare(`
-      INSERT OR REPLACE INTO volunteers (id, name, team, role, avatar, last_active)
-      VALUES (?, ?, ?, 'volunteer', ?, ?)
-    `).run(volunteer.id, volunteer.name, volunteer.team, volunteer.avatar || "", now);
+    try {
+      const db = getDb();
+      const now = new Date().toISOString();
+      db.prepare(`
+        INSERT OR REPLACE INTO volunteers (id, name, team, role, avatar, last_active)
+        VALUES (?, ?, ?, 'volunteer', ?, ?)
+      `).run(volunteer.id, volunteer.name, volunteer.team, volunteer.avatar || "", now);
+    } catch (e) {
+      console.error("registerVolunteer error:", e);
+    }
   },
 
   getVolunteers() {
